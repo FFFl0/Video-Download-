@@ -1,0 +1,16 @@
+{
+  "extName": { "message": "Video Downloader" },
+  "extDescription": { "message": "Finds video files (MP4, WebM and others) on web pages and downloads them." },
+  "popupTitle": { "message": "Videos on this page" },
+  "emptyTitle": { "message": "No videos found" },
+  "emptyHint": { "message": "Start playing the video on the page — it will appear here. Streaming videos (HLS/DASH) and DRM-protected videos are not supported." },
+  "download": { "message": "Download" },
+  "fileName": { "message": "File name" },
+  "askWhere": { "message": "Ask where to save" },
+  "sizeUnknown": { "message": "size unknown" },
+  "openLink": { "message": "Open video in a new tab" },
+  "downloadStarted": { "message": "Download started" },
+  "downloadError": { "message": "Download error: $ERR$", "placeholders": { "err": { "content": "$1" } } },
+  "unsupportedPage": { "message": "This page can't be inspected by extensions." },
+  "units": { "message": "B,KB,MB,GB" }
+}
