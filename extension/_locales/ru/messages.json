@@ -1,16 +1,102 @@
 {
-  "extName": { "message": "Скачивание видео" },
-  "extDescription": { "message": "Находит видеофайлы (MP4, WebM и другие) на страницах и скачивает их." },
-  "popupTitle": { "message": "Видео на странице" },
-  "emptyTitle": { "message": "Видео не найдено" },
-  "emptyHint": { "message": "Запустите воспроизведение видео на странице — оно появится здесь. Потоковое видео (HLS/DASH) и видео с защитой DRM не поддерживаются." },
-  "download": { "message": "Скачать" },
-  "fileName": { "message": "Имя файла" },
-  "askWhere": { "message": "Спрашивать, куда сохранять" },
-  "sizeUnknown": { "message": "размер неизвестен" },
-  "openLink": { "message": "Открыть видео в новой вкладке" },
-  "downloadStarted": { "message": "Загрузка началась" },
-  "downloadError": { "message": "Ошибка загрузки: $ERR$", "placeholders": { "err": { "content": "$1" } } },
-  "unsupportedPage": { "message": "Эту страницу расширения просматривать не могут." },
-  "units": { "message": "Б,КБ,МБ,ГБ" }
+  "extName": {
+    "message": "Скачивание видео"
+  },
+  "extDescription": {
+    "message": "Находит видеофайлы (MP4, WebM и другие) на страницах и скачивает их."
+  },
+  "popupTitle": {
+    "message": "Видео на странице"
+  },
+  "emptyTitle": {
+    "message": "Видео не найдено"
+  },
+  "emptyHint": {
+    "message": "Запустите воспроизведение видео на странице — оно появится здесь. Потоковое видео DASH и видео с защитой DRM не поддерживаются."
+  },
+  "download": {
+    "message": "Скачать"
+  },
+  "fileName": {
+    "message": "Имя файла"
+  },
+  "askWhere": {
+    "message": "Спрашивать, куда сохранять"
+  },
+  "sizeUnknown": {
+    "message": "размер неизвестен"
+  },
+  "openLink": {
+    "message": "Открыть видео в новой вкладке"
+  },
+  "downloadStarted": {
+    "message": "Загрузка началась"
+  },
+  "downloadError": {
+    "message": "Ошибка загрузки: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "unsupportedPage": {
+    "message": "Эту страницу расширения просматривать не могут."
+  },
+  "units": {
+    "message": "Б,КБ,МБ,ГБ"
+  },
+  "cancel": {
+    "message": "Отмена"
+  },
+  "loadingInfo": {
+    "message": "Получение информации о потоке…"
+  },
+  "hlsError": {
+    "message": "Не удалось прочитать поток: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "encrypted": {
+    "message": "Поток зашифрован — скачать нельзя."
+  },
+  "live": {
+    "message": "Прямая трансляция — не поддерживается."
+  },
+  "downloading": {
+    "message": "Скачивание: $P$% · $S$",
+    "placeholders": {
+      "p": {
+        "content": "$1"
+      },
+      "s": {
+        "content": "$2"
+      }
+    }
+  },
+  "saving": {
+    "message": "Сохранение файла…"
+  },
+  "done": {
+    "message": "Готово · $S$",
+    "placeholders": {
+      "s": {
+        "content": "$1"
+      }
+    }
+  },
+  "cancelled": {
+    "message": "Отменено"
+  },
+  "failed": {
+    "message": "Ошибка: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  }
 }

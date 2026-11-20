@@ -10,14 +10,16 @@ const els = {
   tpl: document.getElementById('item-tpl')
 };
 
-const cards = new Map(); // url -> { li, item, edited }
+const cards = new Map(); // url -> { li, item, edited, variantUrl }
 const probed = new Set();
+let jobsByItem = new Map(); // itemUrl -> job
+let currentList = [];
 let tab = null;
 
 // ---------- Утилиты ----------
 
 function formatSize(bytes) {
-  if (!bytes) return t('sizeUnknown');
+  if (!bytes) return '';
   const units = t('units').split(',');
   let i = 0;
   let n = bytes;
@@ -51,14 +53,15 @@ function qualityLabel(w, h) {
 function qualityFromUrl(url) {
   const wh = url.match(/[_\-/.](\d{3,4})x(\d{3,4})[_\-/.]/i);
   if (wh) return qualityLabel(+wh[1], +wh[2]);
-  const p = url.match(/[_\-/.=](2160|1440|1080|720|480|360|240|144)p?[_\-/.&]/i);
+  const p = url.match(/[_\-/.=](2160|1440|1080|720|480|360|240|144)p?[_\-/.&:]/i);
   return p ? (p[1] === '2160' ? '4K' : `${p[1]}p`) : '';
 }
 
 function sanitize(name) {
   return (
     name
-      .replace(/[\\/:*?"<>|~\u0000-\u001f\u007f-\u009f\u200b-\u200f\u202a-\u202e\ufeff]+/g, '_')
+      .replace(/\s*:\s*/g, ' - ')
+      .replace(/[\\/:*?"<>|~\u0000-\u001f\u007f-\u009f​-‏‪-‮﻿]+/g, '_')
       .replace(/\s+/g, ' ')
       .replace(/^[\s.]+|[\s.]+$/g, '')
       .slice(0, 150) || 'video'
@@ -74,15 +77,6 @@ function nameFromUrl(url) {
   }
 }
 
-function defaultName(item, list) {
-  const base = sanitize(item.title || tab?.title || nameFromUrl(item.url) || 'video');
-  const sameBase = list.filter((v) => sanitize(v.title || tab?.title || nameFromUrl(v.url)) === base);
-  if (sameBase.length < 2) return base;
-  const q = qualityLabel(item.width, item.height) || qualityFromUrl(item.url);
-  const suffix = q || String(sameBase.indexOf(item) + 1);
-  return `${base} (${suffix})`;
-}
-
 function setStatus(text, isError = false) {
   els.status.textContent = text;
   els.status.classList.toggle('error', isError);
@@ -90,43 +84,105 @@ function setStatus(text, isError = false) {
   if (text) setStatus.timer = setTimeout(() => (els.status.textContent = ''), 4000);
 }
 
+// ---------- Модель карточки ----------
+
+function selectedVariant(card) {
+  const variants = card.item.variants || [];
+  return variants.find((v) => v.url === card.variantUrl) || variants[0] || null;
+}
+
+// Разрешение выбранного варианта (для HLS) или самого файла.
+function dims(card) {
+  const v = card.item.kind === 'hls' ? selectedVariant(card) : null;
+  return v && v.width ? v : card.item;
+}
+
+function quality(card) {
+  const d = dims(card);
+  return qualityLabel(d.width, d.height) || qualityFromUrl(selectedVariant(card)?.url || card.item.url);
+}
+
+function estimateSize(item, variant) {
+  return variant?.bandwidth && item.duration ? (variant.bandwidth * item.duration) / 8 : 0;
+}
+
+function baseName(item) {
+  return sanitize(item.title || tab?.title || nameFromUrl(item.url) || 'video');
+}
+
+function defaultName(card) {
+  const base = baseName(card.item);
+  const same = currentList.filter((v) => baseName(v) === base);
+  if (same.length < 2 && !(card.item.variants?.length > 1)) return base;
+  const suffix = quality(card) || String(same.indexOf(card.item) + 1);
+  return `${base} (${suffix})`;
+}
+
+function extension(item) {
+  return item.ext || (item.kind === 'hls' ? 'ts' : 'mp4');
+}
+
 // ---------- Отрисовка ----------
 
 function sortList(list) {
-  const pixels = (v) => (v.width || 0) * (v.height || 0);
-  return [...list].sort((a, b) => pixels(b) - pixels(a) || (b.size || 0) - (a.size || 0));
+  const height = (v) => Math.max(v.height || 0, ...(v.variants || []).map((x) => x.height || 0));
+  return [...list].sort(
+    (a, b) => (b.kind === 'hls') - (a.kind === 'hls') || height(b) - height(a) || (b.size || 0) - (a.size || 0)
+  );
+}
+
+function createCard(item) {
+  const li = els.tpl.content.firstElementChild.cloneNode(true);
+  const card = { li, item, edited: false, variantUrl: '' };
+
+  const input = li.querySelector('.name');
+  input.addEventListener('input', () => (card.edited = true));
+  input.addEventListener('keydown', (e) => e.key === 'Enter' && download(card));
+
+  const select = li.querySelector('.variant');
+  select.addEventListener('change', () => {
+    card.variantUrl = select.value;
+    updateCard(card);
+  });
+
+  const btn = li.querySelector('.download');
+  btn.textContent = t('download');
+  btn.addEventListener('click', () => download(card));
+
+  const cancel = li.querySelector('.cancel');
+  cancel.textContent = t('cancel');
+  cancel.addEventListener('click', () => {
+    const job = jobsByItem.get(card.item.url);
+    if (job) chrome.runtime.sendMessage({ type: 'hls-cancel', jobId: job.id });
+  });
+
+  const host = li.querySelector('.host');
+  host.href = item.url;
+  host.title = t('openLink');
+  try {
+    const u = new URL(item.url);
+    host.textContent = u.host + u.pathname;
+  } catch {
+    host.textContent = item.url;
+  }
+  return card;
 }
 
 function render(list) {
-  list = sortList(list);
-  els.count.textContent = list.length ? String(list.length) : '';
-  els.empty.hidden = list.length > 0;
+  currentList = sortList(list.filter((v) => !v.hidden));
+  els.count.textContent = currentList.length ? String(currentList.length) : '';
+  els.empty.hidden = currentList.length > 0;
 
   const seen = new Set();
-  for (const item of list) {
+  for (const item of currentList) {
     seen.add(item.url);
     let card = cards.get(item.url);
     if (!card) {
-      const li = els.tpl.content.firstElementChild.cloneNode(true);
-      card = { li, item, edited: false };
-      const input = li.querySelector('.name');
-      input.addEventListener('input', () => (card.edited = true));
-      input.addEventListener('keydown', (e) => e.key === 'Enter' && download(card));
-      const btn = li.querySelector('.download');
-      btn.textContent = t('download');
-      btn.addEventListener('click', () => download(card));
-      const host = li.querySelector('.host');
-      host.href = item.url;
-      host.title = t('openLink');
-      try {
-        host.textContent = new URL(item.url).host + new URL(item.url).pathname;
-      } catch {
-        host.textContent = item.url;
-      }
+      card = createCard(item);
       cards.set(item.url, card);
     }
     card.item = item;
-    updateCard(card, list);
+    updateCard(card);
     els.list.appendChild(card.li); // сохраняет порядок сортировки
   }
 
@@ -138,26 +194,116 @@ function render(list) {
   }
 }
 
-function updateCard(card, list) {
-  const { li, item } = card;
-  const input = li.querySelector('.name');
-  if (!card.edited) input.value = defaultName(item, list);
-  li.querySelector('.ext').textContent = `.${item.ext || 'mp4'}`;
+function updateVariantSelect(card) {
+  const select = card.li.querySelector('.variant');
+  const variants = card.item.variants || [];
+  const informative = variants.filter((v) => v.height || v.bandwidth);
+  select.hidden = variants.length < 2 && !informative.length;
+  if (select.hidden) return;
 
-  const q = qualityLabel(item.width, item.height) || qualityFromUrl(item.url);
+  const key = JSON.stringify(variants);
+  if (select.dataset.key !== key) {
+    select.dataset.key = key;
+    select.replaceChildren(
+      ...variants.map((v) => {
+        const label = [
+          qualityLabel(v.width, v.height) || (v.bandwidth ? `${Math.round(v.bandwidth / 1000)} kbps` : '?'),
+          estimateSize(card.item, v) ? `~${formatSize(estimateSize(card.item, v))}` : ''
+        ]
+          .filter(Boolean)
+          .join(' · ');
+        return new Option(label, v.url);
+      })
+    );
+  }
+  if (!variants.some((v) => v.url === card.variantUrl)) card.variantUrl = variants[0]?.url || '';
+  select.value = card.variantUrl;
+}
+
+function updateCard(card) {
+  const { li, item } = card;
+  const isHls = item.kind === 'hls';
+  if (isHls) updateVariantSelect(card);
+  else li.querySelector('.variant').hidden = true;
+
+  const input = li.querySelector('.name');
+  if (!card.edited) input.value = defaultName(card);
+  li.querySelector('.ext').textContent = `.${extension(item)}`;
+
+  const q = quality(card);
   const badge = li.querySelector('.quality');
   badge.hidden = !q;
   badge.textContent = q;
 
+  const d = dims(card);
   const parts = [];
-  if (item.width && item.height) parts.push(`${item.width}×${item.height}`);
-  parts.push(formatSize(item.size));
+  if (d.width && d.height) parts.push(`${d.width}×${d.height}`);
+  if (isHls) {
+    const est = estimateSize(item, selectedVariant(card));
+    if (est) parts.push(`~${formatSize(est)}`);
+  } else {
+    parts.push(formatSize(item.size) || t('sizeUnknown'));
+  }
   if (item.duration) parts.push(formatDuration(item.duration));
-  if (item.ext) parts.push(item.ext.toUpperCase());
+  parts.push(isHls ? 'HLS' : extension(item).toUpperCase());
   li.querySelector('.info').textContent = parts.join(' · ');
+
+  // Причина, по которой скачать нельзя.
+  let problem = '';
+  if (isHls) {
+    if (!item.parsed) problem = t('loadingInfo');
+    else if (item.error) problem = t('hlsError', [item.error]);
+    else if (item.encrypted) problem = t('encrypted');
+    else if (item.live) problem = t('live');
+  }
+  const note = li.querySelector('.note');
+  note.hidden = !problem;
+  note.textContent = problem;
+
+  updateProgress(card, problem);
 }
 
-// ---------- Определение размера и разрешения ----------
+function updateProgress(card, problem) {
+  const { li } = card;
+  const job = jobsByItem.get(card.item.url);
+  const box = li.querySelector('.progress');
+  const btn = li.querySelector('.download');
+  const active = job && (job.status === 'downloading' || job.status === 'saving');
+  btn.disabled = !!problem || !!active;
+
+  box.hidden = !job;
+  if (!job) return;
+
+  const fill = li.querySelector('.fill');
+  const text = li.querySelector('.ptext');
+  const percent = job.total ? Math.floor((job.done / job.total) * 100) : 0;
+  box.dataset.status = job.status;
+  li.querySelector('.cancel').hidden = job.status !== 'downloading';
+
+  switch (job.status) {
+    case 'downloading':
+      fill.style.width = `${percent}%`;
+      text.textContent = t('downloading', [String(percent), formatSize(job.bytes) || '0']);
+      break;
+    case 'saving':
+      fill.style.width = '100%';
+      text.textContent = t('saving');
+      break;
+    case 'done':
+      fill.style.width = '100%';
+      text.textContent = t('done', [formatSize(job.bytes)]);
+      break;
+    case 'cancelled':
+      fill.style.width = '0';
+      text.textContent = t('cancelled');
+      break;
+    default:
+      fill.style.width = '0';
+      text.textContent = t('failed', [job.error || '?']);
+  }
+}
+
+// ---------- Определение размера и разрешения обычных файлов ----------
 
 async function probeSize(item) {
   const info = {};
@@ -224,7 +370,9 @@ async function probe(item) {
 }
 
 async function probeAll(list) {
-  const queue = list.filter((v) => !probed.has(v.url) && (!v.size || !v.width || !v.duration));
+  const queue = list.filter(
+    (v) => v.kind !== 'hls' && !probed.has(v.url) && (!v.size || !v.width || !v.duration)
+  );
   const worker = async () => {
     while (queue.length) await probe(queue.shift());
   };
@@ -236,17 +384,32 @@ async function probeAll(list) {
 async function download(card) {
   const { li, item } = card;
   const btn = li.querySelector('.download');
-  const name = sanitize(li.querySelector('.name').value);
-  const filename = `${name}.${item.ext || 'mp4'}`;
-  const options = { url: item.url, filename, saveAs: els.askWhere.checked, conflictAction: 'uniquify' };
+  if (btn.disabled) return;
+  const filename = `${sanitize(li.querySelector('.name').value)}.${extension(item)}`;
   btn.disabled = true;
+
+  if (item.kind === 'hls') {
+    const res = await chrome.runtime.sendMessage({
+      type: 'hls-download',
+      tabId: tab.id,
+      itemUrl: item.url,
+      variantUrl: selectedVariant(card)?.url || item.url,
+      filename,
+      saveAs: els.askWhere.checked
+    });
+    if (res?.error) setStatus(t('failed', [res.error]), true);
+    await refreshJobs();
+    return;
+  }
+
+  const options = { url: item.url, filename, saveAs: els.askWhere.checked, conflictAction: 'uniquify' };
   try {
     try {
       await chrome.downloads.download(options);
     } catch (e) {
       // Chrome отклоняет некоторые имена — пробуем запасное.
       if (!/filename/i.test(e.message)) throw e;
-      await chrome.downloads.download({ ...options, filename: `video.${item.ext || 'mp4'}` });
+      await chrome.downloads.download({ ...options, filename: `video.${extension(item)}` });
     }
     setStatus(t('downloadStarted'));
   } catch (e) {
@@ -259,9 +422,26 @@ async function download(card) {
 // ---------- Инициализация ----------
 
 async function refresh() {
-  const list = await chrome.runtime.sendMessage({ type: 'get-videos', tabId: tab.id });
-  render(list || []);
-  probeAll(list || []);
+  const list = (await chrome.runtime.sendMessage({ type: 'get-videos', tabId: tab.id })) || [];
+  render(list);
+  probeAll(list);
+}
+
+async function refreshJobs() {
+  const jobs = (await chrome.runtime.sendMessage({ type: 'get-jobs', tabId: tab.id })) || [];
+  jobsByItem = new Map(jobs.map((j) => [j.itemUrl, j]));
+  for (const card of cards.values()) updateCard(card);
+}
+
+function debounce(fn, ms) {
+  let timer = null;
+  return () => {
+    if (timer) return;
+    timer = setTimeout(() => {
+      timer = null;
+      fn();
+    }, ms);
+  };
 }
 
 async function init() {
@@ -279,17 +459,15 @@ async function init() {
     return;
   }
 
-  let pending = null;
+  const refreshSoon = debounce(refresh, 200);
+  const refreshJobsSoon = debounce(refreshJobs, 100);
   chrome.runtime.onMessage.addListener((msg) => {
-    if (msg?.type === 'videos-updated' && msg.tabId === tab.id && !pending) {
-      pending = setTimeout(() => {
-        pending = null;
-        refresh();
-      }, 200);
-    }
+    if (msg?.type === 'videos-updated' && msg.tabId === tab.id) refreshSoon();
+    if (msg?.type === 'jobs-updated') refreshJobsSoon();
   });
 
   await refresh();
+  await refreshJobs();
 }
 
 init();

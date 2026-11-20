@@ -3,9 +3,9 @@
   "name": "__MSG_extName__",
   "short_name": "Video Downloader",
   "description": "__MSG_extDescription__",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "default_locale": "en",
-  "minimum_chrome_version": "102",
+  "minimum_chrome_version": "116",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -23,12 +23,26 @@
   "background": {
     "service_worker": "background.js"
   },
-  "permissions": ["webRequest", "webNavigation", "downloads", "storage", "tabs"],
-  "host_permissions": ["<all_urls>"],
+  "permissions": [
+    "webRequest",
+    "webNavigation",
+    "downloads",
+    "storage",
+    "tabs",
+    "offscreen",
+    "declarativeNetRequestWithHostAccess"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": true
     }

@@ -1,16 +1,102 @@
 {
-  "extName": { "message": "Video Downloader" },
-  "extDescription": { "message": "Finds video files (MP4, WebM and others) on web pages and downloads them." },
-  "popupTitle": { "message": "Videos on this page" },
-  "emptyTitle": { "message": "No videos found" },
-  "emptyHint": { "message": "Start playing the video on the page — it will appear here. Streaming videos (HLS/DASH) and DRM-protected videos are not supported." },
-  "download": { "message": "Download" },
-  "fileName": { "message": "File name" },
-  "askWhere": { "message": "Ask where to save" },
-  "sizeUnknown": { "message": "size unknown" },
-  "openLink": { "message": "Open video in a new tab" },
-  "downloadStarted": { "message": "Download started" },
-  "downloadError": { "message": "Download error: $ERR$", "placeholders": { "err": { "content": "$1" } } },
-  "unsupportedPage": { "message": "This page can't be inspected by extensions." },
-  "units": { "message": "B,KB,MB,GB" }
+  "extName": {
+    "message": "Video Downloader"
+  },
+  "extDescription": {
+    "message": "Finds video files (MP4, WebM and others) on web pages and downloads them."
+  },
+  "popupTitle": {
+    "message": "Videos on this page"
+  },
+  "emptyTitle": {
+    "message": "No videos found"
+  },
+  "emptyHint": {
+    "message": "Start playing the video on the page — it will appear here. DASH streams and DRM-protected videos are not supported."
+  },
+  "download": {
+    "message": "Download"
+  },
+  "fileName": {
+    "message": "File name"
+  },
+  "askWhere": {
+    "message": "Ask where to save"
+  },
+  "sizeUnknown": {
+    "message": "size unknown"
+  },
+  "openLink": {
+    "message": "Open video in a new tab"
+  },
+  "downloadStarted": {
+    "message": "Download started"
+  },
+  "downloadError": {
+    "message": "Download error: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "unsupportedPage": {
+    "message": "This page can't be inspected by extensions."
+  },
+  "units": {
+    "message": "B,KB,MB,GB"
+  },
+  "cancel": {
+    "message": "Cancel"
+  },
+  "loadingInfo": {
+    "message": "Reading stream info…"
+  },
+  "hlsError": {
+    "message": "Couldn't read the stream: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  },
+  "encrypted": {
+    "message": "The stream is encrypted and can't be downloaded."
+  },
+  "live": {
+    "message": "Live streams are not supported."
+  },
+  "downloading": {
+    "message": "Downloading: $P$% · $S$",
+    "placeholders": {
+      "p": {
+        "content": "$1"
+      },
+      "s": {
+        "content": "$2"
+      }
+    }
+  },
+  "saving": {
+    "message": "Saving file…"
+  },
+  "done": {
+    "message": "Done · $S$",
+    "placeholders": {
+      "s": {
+        "content": "$1"
+      }
+    }
+  },
+  "cancelled": {
+    "message": "Cancelled"
+  },
+  "failed": {
+    "message": "Error: $ERR$",
+    "placeholders": {
+      "err": {
+        "content": "$1"
+      }
+    }
+  }
 }

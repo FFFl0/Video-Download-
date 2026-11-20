@@ -123,3 +123,37 @@ main { overflow-y: auto; flex: 1; }
 .switch { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
 .status { color: var(--muted); font-size: 12px; text-align: right; }
 .status.error { color: var(--error); }
+
+.host { flex: 1; }
+
+.variant {
+  flex: none;
+  max-width: 150px;
+  font: inherit;
+  font-size: 12px;
+  color: inherit;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.note { color: var(--muted); font-size: 12px; }
+
+.progress { display: flex; flex-direction: column; gap: 4px; }
+.bar { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.fill { height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+.progress[data-status="done"] .fill { background: #16a34a; }
+.progress[data-status="error"] .ptext { color: var(--error); }
+.progress .row { justify-content: space-between; }
+.ptext { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cancel {
+  font: inherit;
+  font-size: 12px;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+.cancel:hover { text-decoration: underline; }
